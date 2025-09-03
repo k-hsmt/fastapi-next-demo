@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-const API_BASE = "https://fastapi-healthz.onrender.com";
+const API_BASE = "https://fastapi-next-demo.onrender.com";
 
 export default function Home() {
   const [text, setText] = useState("");

@@ -6,6 +6,7 @@ app = FastAPI()
 origins = [
     "http://localhost:3000",      # 開発中のNext.js
     "http://127.0.0.1:3000",
+    "https://fastapi-next-demo.vercel.app/",
 ]
 
 app.add_middleware(

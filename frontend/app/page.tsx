@@ -7,20 +7,6 @@ export default function Home() {
   const [text, setText] = useState("");
   const [result, setResult] = useState<string>("");
 
-  const checkHealth = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/healthz`);
-      // const data = await res.json();
-      // setResult(JSON.stringify(data));
-      const text = await res.text();
-      setResult(`status=${res.status}, body=${text}`);
-      
-    } catch (e) {
-      // setResult("error");
-      setResult(`fetch error: ${String(e)}`);      
-    }
-  };
-
   const send = async() =>{
     try {
       const res = await fetch(`${API_BASE}/echo`, {

@@ -4,6 +4,14 @@ import { useState } from "react";
 type FormState = { name: string; email: string; message: string };
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? ""; // 例: https://fastapi-next-demo.onrender.com
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
 export default function ContactPage() {
   const [form, setForm] = useState<FormState>({ name: "", email: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -52,8 +60,9 @@ export default function ContactPage() {
       const data: { ok: boolean; received: FormState } = await res.json();
       setResult({ ok: true, msg: `送信完了：${data.received.name} さん、ありがとうございました。` });
       setForm({ name: "", email: "", message: "" });
-    } catch (err: any) {
-      setResult({ ok: false, msg: `送信に失敗しました：${String(err?.message ?? err)}` });
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err);
+      setResult({ ok: false, msg: `送信に失敗しました：${msg}` });
     } finally {
       setSubmitting(false);
     }

@@ -6,6 +6,8 @@
 ## URLs
 - Backend (Render): https://fastapi-next-demo.onrender.com/  （/healthz OK）
 - Frontend (Vercel): https://fastapi-next-demo.vercel.app/
+- Contact Form (Vercel): https://fastapi-next-demo.vercel.app/contact
+- Contact API (Render): https://fastapi-next-demo.onrender.com/contact  (POST, JSON body: {"name","email","message"})
 
 # Local Development
 ## Backend Run (local)

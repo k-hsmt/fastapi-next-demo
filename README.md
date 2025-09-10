@@ -8,6 +8,8 @@
 - Frontend (Vercel): https://fastapi-next-demo.vercel.app/
 - Contact Form (Vercel): https://fastapi-next-demo.vercel.app/contact
 - Contact API (Render): https://fastapi-next-demo.onrender.com/contact  (POST, JSON body: {"name","email","message"})
+- Contact List (Vercel): https://fastapi-next-demo.vercel.app/contact/list
+- Contact List API (Render): https://fastapi-next-demo.onrender.com/contact/list  (GET, returns JSON list)
 
 # Local Development
 ## Backend Run (local)

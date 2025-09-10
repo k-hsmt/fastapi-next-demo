@@ -1,7 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI,Depends
+from sqlalchemy.orm import Session
+from database import Base, engine, get_db
+from models import Contact
+from crud import create_contact
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from schemas import ContactIn, ContactOut
+from schemas import ContactIn, ContactOut,ContactRow
+from typing import List
 import logging
 
 app = FastAPI()
@@ -20,6 +25,11 @@ app.add_middleware(
     allow_headers=["*"], 
 )
 
+# ★ 起動時にテーブル作成（Alembicなしの最短ルート）
+@app.on_event("startup")
+def on_startup():
+    Base.metadata.create_all(bind=engine)
+
 # ロガー
 logger = logging.getLogger("contact")
 if not logger.handlers:
@@ -32,14 +42,23 @@ if not logger.handlers:
 logger.setLevel(logging.INFO)
 
 @app.post("/contact", response_model=ContactOut)
-def create_contact(payload: ContactIn):
-    # まずはログに記録（実サービスならDB保存やメール送信へ拡張）
+def create_contact_endpoint(payload: ContactIn, db: Session = Depends(get_db)):
     logger.info(
         "Contact received: name=%s email=%s message_len=%d",
         payload.name, payload.email, len(payload.message)
     )
+    _row = create_contact(db, payload)     # ← 保存！
     return ContactOut(ok=True, received=payload)
 
+@app.get("/contact/list", response_model=List[ContactRow])
+def list_contacts(limit: int = 20, db: Session = Depends(get_db)):
+    rows = db.query(Contact).order_by(Contact.id.desc()).limit(limit).all()
+    return [
+        ContactRow(
+            id=r.id, name=r.name, email=r.email, message=r.message, created_at=r.created_at
+        )
+        for r in rows
+    ]
 
 @app.get("/healthz")
 def healthz():

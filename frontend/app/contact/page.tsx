@@ -1,8 +1,28 @@
 "use client";
 import { useState } from "react";
+import { useEffect } from "react";
+import toast from "react-hot-toast";
 
 type FormState = { name: string; email: string; message: string };
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? ""; // 例: https://fastapi-next-demo.onrender.com
+
+// タイムアウト付き fetch ヘルパー
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutMs = 15000
+) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(input, { ...init, signal: controller.signal });
+    clearTimeout(id);
+    return res;
+  } catch (e) {
+    clearTimeout(id);
+    throw e;
+  }
+}
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -12,16 +32,23 @@ function getErrorMessage(error: unknown): string {
     return String(error);
   }
 }
+
 export default function ContactPage() {
-  const [form, setForm] = useState<FormState>({ name: "", email: "", message: "" });
+  // ★ ここは“元のまま”維持
+  const [form, setForm] = useState<FormState>({
+    name: "",
+    email: "",
+    message: "",
+  });
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<null | { ok: boolean; msg: string }>(null);
+  const [result, setResult] = useState<null | { ok: boolean; msg: string }>(
+    null
+  );
 
   const onChange =
     (key: keyof FormState) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm((s) => ({ ...s, [key]: e.target.value }));
-    };
 
   const validEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
   const isValid =
@@ -29,38 +56,57 @@ export default function ContactPage() {
     validEmail(form.email) &&
     form.message.trim().length > 0;
 
-  const onSubmit = async (e: React.FormEvent) => {
+  // ★ onSubmit に “toast を組み込む” だけ（isValid/result を活かす）
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-      console.log("[contact] submit clicked", { API_BASE, form });
     setResult(null);
 
     if (!API_BASE) {
-      setResult({ ok: false, msg: "APIベースURLが未設定です（.env.local の NEXT_PUBLIC_API_BASE を確認）。" });
+      const msg =
+        "APIベースURLが未設定です（.env.local の NEXT_PUBLIC_API_BASE を確認）。";
+      setResult({ ok: false, msg });
+      toast.error(msg);
       return;
     }
     if (!isValid) {
-      setResult({ ok: false, msg: "未入力またはメール形式が正しくありません。" });
+      const msg = "未入力またはメール形式が正しくありません。";
+      setResult({ ok: false, msg });
+      toast.error(msg);
       return;
     }
 
+    setSubmitting(true);
     try {
-      setSubmitting(true);
-      console.log("[contact] fetch start");
-      const res = await fetch(`${API_BASE}/contact`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      console.log("[contact] fetch start");
-      if (!res.ok) {
-        const bodyText = await res.text().catch(() => "");
-        throw new Error(`HTTP ${res.status} ${bodyText}`);
-      }
+      await toast.promise(
+        (async () => {
+          const res = await fetchWithTimeout(
+            `${API_BASE}/contact`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(form),
+            },
+            15000
+          );
+          if (!res.ok) {
+            const body = await res.text().catch(() => "");
+            throw new Error(`HTTP ${res.status}${body ? `: ${body}` : ""}`);
+          }
+          return res.json() as Promise<{ ok: boolean; received: FormState }>;
+        })(),
+        {
+          loading: "送信中…",
+          success: "送信しました。ありがとうございます！",
+          error: "送信できませんでした。10秒後に再送してください。",
+        }
+      );
 
-      const data: { ok: boolean; received: FormState } = await res.json();
-      setResult({ ok: true, msg: `送信完了：${data.received.name} さん、ありがとうございました。` });
+      setResult({
+        ok: true,
+        msg: `送信完了：${form.name} さん、ありがとうございました。`,
+      });
       setForm({ name: "", email: "", message: "" });
-    } catch (err: unknown) {
+    } catch (err) {
       const msg = getErrorMessage(err);
       setResult({ ok: false, msg: `送信に失敗しました：${msg}` });
     } finally {
